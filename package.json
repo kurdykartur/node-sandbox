@@ -1,0 +1,25 @@
+{
+  "name": "sandbox",
+  "version": "1.0.0",
+  "description": "Node-Sandbox can be used as template for NodeJS modules inside node projects. Feel free to copy some code and use it. Code will be happy!",
+  "main": "index.js",
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "publish-package": "npm run build && cp package.json dist/ && (cd dist && npm publish)"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kurdykartur/node-sandbox.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kurdykartur/node-sandbox/issues"
+  },
+  "homepage": "https://github.com/kurdykartur/node-sandbox#readme"
+}
