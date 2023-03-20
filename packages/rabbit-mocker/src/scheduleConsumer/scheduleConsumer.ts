@@ -1,38 +1,38 @@
-import { Channel, Connection } from 'amqplib';
+import { Channel } from 'amqplib';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
+import { v4 as uuidv4 } from "uuid";
 import { RabbitConnector } from '../rabbitConnector.ts/rabbitConnector';
 import { ScheduleConfig } from './scheduleConsumer.types';
-
 dayjs.extend(utc);
 
 export class ScheduleConsumer {
-  private channel: Channel | null;
-  private connection: Connection | null;
+  private uuids: string[]
+  private channel: Channel;
 
-  constructor(private scheduleConfig: ScheduleConfig, private rabbitConnector: RabbitConnector) {
+  constructor (private scheduleConfig: ScheduleConfig, private rabbitConnector: RabbitConnector, channel: Channel) {
     this.scheduleConfig = scheduleConfig;
     this.rabbitConnector = rabbitConnector;
+    this.channel = channel;
   }
 
   private init = async () => {
-    this.connection = await this.rabbitConnector.connectToRabbit();
-    this.channel = await this.rabbitConnector.createChannel(this.connection);
-
-    if (this.channel) {
-      await this.rabbitConnector.assertExchange(this.channel, this.scheduleConfig.targetExchange, 'direct');
-      await this.rabbitConnector.assertQueue(this.channel, this.scheduleConfig.targetQueue);
-      await this.rabbitConnector.bindQueueToExchange(
-        this.channel,
-        this.scheduleConfig.targetQueue,
-        this.scheduleConfig.targetExchange,
-        this.scheduleConfig.routingKey,
-      );
-    }
+    this.uuids = new Array(this.scheduleConfig.uuidGeneratorsCount).map(() => { return uuidv4() })
   };
 
   private generatePayload = async (iteratorValue: number) => {
     const message = {};
+
+    for (let index = 0; index < this.scheduleConfig.uuidGenerator.length; index++) {
+      const element = this.scheduleConfig.uuidGenerator[index];
+      message[element.fieldName] = this.uuids[element.generatorOrder];
+    }
+
+    for (let index = 0; index < this.scheduleConfig.optionField.length; index++) {
+      const element = this.scheduleConfig.optionField[index];
+      message[element.fieldName] = element.options[this.between(0, element.options.length)];
+    }
+
     for (let index = 0; index < this.scheduleConfig.staticFields.length; index++) {
       const element = this.scheduleConfig.staticFields[index];
       message[element.fieldName] = element.value;
@@ -48,7 +48,14 @@ export class ScheduleConsumer {
       const date = element.startValue ? dayjs(element.startValue).utc() : dayjs.utc();
 
       message[element.fieldName] = date.add(element.iteratorValue * iteratorValue, element.iteratorUnit).format();
-    }
+      }
+
+      for (let index = 0; index < this.scheduleConfig.conditions.length; index++) {
+        const element = this.scheduleConfig.conditions[index];
+        if(message[element.conditionField] === element.conditionValue) {
+          message[element.targetField] = element.targetValue
+        }
+      }
 
     if (this.scheduleConfig.delayTimeInSeconds) {
       await this.sleep(this.scheduleConfig.delayTimeInSeconds);
@@ -69,11 +76,11 @@ export class ScheduleConsumer {
           await this.rabbitConnector.publishMessage(
             this.channel,
             this.scheduleConfig.targetExchange,
-            this.scheduleConfig.routingKey,
             JSON.stringify(message),
+            this.scheduleConfig.routingKey
           );
 
-        console.log('Published message:', message);
+          console.log('Published message:', message);
 
         } catch (error) {
           console.log(error)
@@ -82,9 +89,15 @@ export class ScheduleConsumer {
     }
   };
 
-  private sleep = async (ms: number) => {
-    return new Promise((resolve) => {
-      setTimeout(resolve, ms);
+  private sleep = async (ms: number): Promise<void> => {
+    return await new Promise(async (resolve) => {
+       setTimeout(resolve, ms * 1000);
     });
   };
+
+  private between = (min: number, max: number): number => {
+    return Math.floor(
+      Math.random() * (max - min) + min
+    )
+  }
 }

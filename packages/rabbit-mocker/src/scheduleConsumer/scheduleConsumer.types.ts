@@ -6,6 +6,11 @@ export type ScheduleConfig = {
   targetExchange: string;
   recordsCount: number; // default 1
   delayTimeInSeconds?: number;
+  uuidGeneratorsCount?: 1,
+  uuidGenerator: {
+    fieldName: string;
+    generatorOrder: number;
+  }[],
   timeIterator: {
     fieldName: string;
     iteratorValue: number; // example 10, 20
@@ -19,6 +24,16 @@ export type ScheduleConfig = {
   }[];
   staticFields: {
     fieldName: string;
-    value: string | number | null;
+    value: string | number | null | string[] | number[];
   }[];
+  optionField: {
+    fieldName: string;
+    options: (string | number | null | string[] | number[])[]
+  }[];
+  conditions: {
+    conditionField: string;
+    conditionValue: any;
+    targetField: string;
+    targetValue: any;
+  }[]
 };

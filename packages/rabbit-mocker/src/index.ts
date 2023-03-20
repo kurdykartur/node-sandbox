@@ -1,3 +1,3 @@
-import exampleRunner from "./example/example";
+import exampleRunner from "./example/apd";
 
 void exampleRunner();
